@@ -17,3 +17,26 @@ All diagrams follow UML 2.5 standards and are created using PlantUML notation fo
 ## Viewing Diagrams
 
 The diagrams are provided in both PlantUML (.puml) format and exported images (.png) for easy viewing.
+
+## Generated Diagrams
+
+### Agent Creation Flow
+
+![Agent Creation Flow](images/agent-creation-flow.png)
+
+### Conversation Flow
+
+![Conversation Flow](images/conversation-flow.png)
+
+### Core Components
+
+![Core Components](images/core-components.png)
+
+### System Architecture
+
+![System Architecture](images/system-architecture.png)
+
+### Workflow Process
+
+![Workflow Process](images/workflow-process.png)
+
