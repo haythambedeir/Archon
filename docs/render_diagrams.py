@@ -1,48 +1,61 @@
 import os
 import requests
-import base64
 import zlib
-from PIL import Image
-import io
+import base64
+from pathlib import Path
+
+def ensure_directory(path):
+    """Ensure a directory exists"""
+    Path(path).mkdir(parents=True, exist_ok=True)
 
 def encode_puml(puml_content):
-    """Encode PlantUML content for web URL"""
-    compressed = zlib.compress(puml_content.encode('utf-8'))
+    """Encode PlantUML content for URL"""
+    # Remove @startuml and @enduml if present
+    puml_content = puml_content.replace("@startuml", "").replace("@enduml", "")
+    
+    # Compress using zlib
+    zlibbed = zlib.compress(puml_content.encode('utf-8'))
+    
+    # Remove zlib header and checksum
+    compressed = zlibbed[2:-4]
+    
+    # Encode to base64
     encoded = base64.b64encode(compressed)
-    return encoded.decode('utf-8')
-
-def get_diagram_url(puml_content):
-    """Get PlantUML web render URL"""
-    encoded = encode_puml(puml_content)
-    # Try multiple PlantUML servers
-    servers = [
-        "https://www.plantuml.com/plantuml/png/",
-        "https://plantuml.org/plantuml/png/",
-        "http://plantuml.org/plantuml/png/"
-    ]
     
-    for server in servers:
-        try:
-            url = f"{server}{encoded}"
-            # Test the URL first
-            response = requests.head(url)
-            if response.status_code == 200:
-                return url
-        except:
-            continue
+    # Make URL-safe
+    url_str = encoded.decode('ascii')
+    url_str = url_str.replace('+', '-')
+    url_str = url_str.replace('/', '_')
     
-    raise Exception("No PlantUML server is responding")
+    return url_str
 
-def verify_image(image_data):
-    """Verify that the image data is a valid PNG and not empty"""
+def render_diagram(puml_content, output_path):
+    """Render a single PlantUML diagram"""
     try:
-        img = Image.open(io.BytesIO(image_data))
-        width, height = img.size
-        # Check if image is not just a blank or error image
-        if width < 50 or height < 50:  # Minimum size threshold
+        # Encode the content
+        encoded = encode_puml(puml_content)
+        
+        # Add the required tilde prefix
+        encoded = "~1" + encoded
+        
+        # Get the PNG from PlantUML server
+        url = f"http://www.plantuml.com/plantuml/png/{encoded}"
+        print(f"Requesting: {url}")
+        
+        response = requests.get(url)
+        
+        if response.status_code == 200 and response.headers.get('content-type', '').startswith('image/'):
+            # Save the image
+            with open(output_path, 'wb') as f:
+                f.write(response.content)
+            return True
+        else:
+            print(f"Error: Server returned status {response.status_code}")
+            print(f"Response content: {response.text[:200]}...")
             return False
-        return True
-    except:
+            
+    except Exception as e:
+        print(f"Error: {str(e)}")
         return False
 
 def render_diagrams():
@@ -55,15 +68,14 @@ def render_diagrams():
         'state-diagrams'
     ]
     
-    # Create images directory if it doesn't exist
-    if not os.path.exists('docs/images'):
-        os.makedirs('docs/images')
+    # Create images directory
+    ensure_directory('docs/images')
     
     success_count = 0
     failure_count = 0
     
     for dir_name in diagram_dirs:
-        dir_path = f'docs/{dir_name}'
+        dir_path = os.path.join('docs', dir_name)
         if not os.path.exists(dir_path):
             print(f"Directory not found: {dir_path}")
             continue
@@ -74,37 +86,22 @@ def render_diagrams():
                 print(f"\nProcessing {puml_path}...")
                 
                 try:
-                    with open(puml_path, 'r') as f:
+                    # Read the PlantUML content
+                    with open(puml_path, 'r', encoding='utf-8') as f:
                         puml_content = f.read()
                     
-                    # Get diagram URL
-                    url = get_diagram_url(puml_content)
-                    print(f"Using URL: {url}")
+                    # Generate output path
+                    png_name = file.replace('.puml', '.png')
+                    output_path = os.path.join('docs/images', png_name)
                     
-                    # Download PNG with retries
-                    max_retries = 3
-                    for attempt in range(max_retries):
-                        try:
-                            response = requests.get(url, timeout=30)
-                            if response.status_code == 200 and verify_image(response.content):
-                                png_name = file.replace('.puml', '.png')
-                                png_path = os.path.join('docs/images', png_name)
-                                
-                                with open(png_path, 'wb') as f:
-                                    f.write(response.content)
-                                
-                                # Verify the written file
-                                if os.path.exists(png_path) and os.path.getsize(png_path) > 1000:
-                                    print(f"✓ Successfully generated {png_path}")
-                                    success_count += 1
-                                    break
-                            else:
-                                print(f"Attempt {attempt + 1}: Invalid image received")
-                        except Exception as e:
-                            print(f"Attempt {attempt + 1} failed: {str(e)}")
-                            if attempt == max_retries - 1:
-                                print(f"× Failed to generate {file}")
-                                failure_count += 1
+                    print(f"Rendering diagram to {output_path}...")
+                    
+                    if render_diagram(puml_content, output_path):
+                        print(f"✓ Successfully generated {output_path}")
+                        success_count += 1
+                    else:
+                        print(f"× Failed to generate {file}")
+                        failure_count += 1
                 
                 except Exception as e:
                     print(f"× Error processing {file}: {str(e)}")
@@ -118,13 +115,13 @@ def render_diagrams():
 
 def update_readme_with_images():
     """Update README.md with links to generated images"""
-    images_dir = 'docs/images'
+    images_dir = os.path.join('docs', 'images')
     if not os.path.exists(images_dir):
         return
         
     images = [f for f in os.listdir(images_dir) if f.endswith('.png')]
     
-    with open('docs/README.md', 'r') as f:
+    with open(os.path.join('docs', 'README.md'), 'r', encoding='utf-8') as f:
         content = f.read()
     
     # Add images section if not present
@@ -135,7 +132,7 @@ def update_readme_with_images():
             content += f"### {name}\n\n"
             content += f"![{name}](images/{image})\n\n"
         
-        with open('docs/README.md', 'w') as f:
+        with open(os.path.join('docs', 'README.md'), 'w', encoding='utf-8') as f:
             f.write(content)
 
 if __name__ == "__main__":
@@ -144,4 +141,4 @@ if __name__ == "__main__":
         update_readme_with_images()
         print("\nDiagrams have been rendered and README.md has been updated.")
     else:
-        print("\nFailed to generate any valid diagrams. Please check the PlantUML syntax and server connectivity.")
+        print("\nFailed to generate any valid diagrams. Please check the PlantUML syntax.")
