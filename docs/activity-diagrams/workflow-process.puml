@@ -1,0 +1,57 @@
+@startuml Workflow Process
+
+' Style settings
+skinparam monochrome true
+skinparam shadowing false
+skinparam ActivityBackgroundColor white
+skinparam ActivityBorderColor black
+
+' Title
+title Archon Workflow Process - Activity Diagram
+
+|User|
+start
+:Input agent requirements;
+
+|StreamlitUI|
+:Initialize conversation;
+:Create session state;
+
+|StateGraph|
+:Start workflow;
+
+|ReasonerAgent|
+fork
+    :Query documentation pages;
+fork again
+    :Analyze user requirements;
+end fork
+:Create scope document;
+:Define architecture;
+:Identify dependencies;
+
+|CoderAgent|
+:Retrieve relevant documentation;
+:Process RAG results;
+
+while (Code generation needed?) is (yes)
+    :Generate code file;
+    :Add to project structure;
+endwhile (no)
+
+|RouterAgent|
+if (User feedback?) then (modifications needed)
+    :Route to CoderAgent;
+    backward:Update code;
+else (complete)
+    :Prepare completion;
+endif
+
+|StreamlitUI|
+:Stream response to user;
+
+|User|
+:Review generated agent;
+stop
+
+@enduml

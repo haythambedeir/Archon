@@ -1,0 +1,69 @@
+@startuml Agent Creation Flow
+
+' Style settings
+skinparam monochrome true
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+skinparam sequenceGroupBorderThickness 1
+
+' Title
+title Archon Agent Creation - Sequence Diagram
+
+' Participants
+actor User
+participant "StreamlitUI" as UI
+participant "StateGraph" as Graph
+participant "ReasonerAgent" as Reasoner
+participant "CoderAgent" as Coder
+participant "RouterAgent" as Router
+participant "DocumentationSystem" as Docs
+database "Supabase" as DB
+
+' Flow
+User -> UI: Request agent creation
+activate UI
+
+UI -> Graph: Initialize workflow
+activate Graph
+
+Graph -> Reasoner: define_scope_with_reasoner()
+activate Reasoner
+
+Reasoner -> Docs: list_documentation_pages()
+activate Docs
+Docs -> DB: Query pages
+DB --> Docs: Return pages
+Docs --> Reasoner: Available pages
+deactivate Docs
+
+Reasoner -> Reasoner: Create scope document
+Reasoner --> Graph: Return scope
+deactivate Reasoner
+
+Graph -> Coder: coder_agent()
+activate Coder
+
+Coder -> Docs: retrieve_relevant_documentation()
+activate Docs
+Docs -> DB: Vector similarity search
+DB --> Docs: Relevant chunks
+Docs --> Coder: Documentation content
+deactivate Docs
+
+Coder -> Coder: Generate agent code
+Coder --> Graph: Return code
+deactivate Coder
+
+Graph -> Router: route_user_message()
+activate Router
+Router -> Router: Determine next action
+Router --> Graph: Next action
+deactivate Router
+
+Graph --> UI: Stream response
+deactivate Graph
+
+UI --> User: Display response
+deactivate UI
+
+@enduml

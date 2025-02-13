@@ -1,0 +1,100 @@
+@startuml Core Components
+
+' Style settings
+skinparam monochrome true
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+' Title
+title Archon Core Components - Class Diagram
+
+' Packages
+package "Workflow Engine" {
+    class AgentState {
+        + latest_user_message: str
+        + messages: List[bytes]
+        + scope: str
+    }
+
+    class StateGraph {
+        + add_node()
+        + add_edge()
+        + add_conditional_edges()
+        + compile()
+    }
+}
+
+package "Core Agents" {
+    class Agent {
+        + system_prompt: str
+        + model: OpenAIModel
+        + run()
+        + run_stream()
+    }
+
+    class PydanticAIDeps {
+        + supabase: Client
+        + openai_client: AsyncOpenAI
+        + reasoner_output: str
+    }
+
+    class ReasonerAgent {
+        + define_scope_with_reasoner()
+    }
+
+    class RouterAgent {
+        + route_user_message()
+    }
+
+    class CoderAgent {
+        + retrieve_relevant_documentation()
+        + list_documentation_pages()
+        + get_page_content()
+    }
+}
+
+package "Documentation System" {
+    class ProcessedChunk {
+        + url: str
+        + chunk_number: int
+        + title: str
+        + summary: str
+        + content: str
+        + metadata: Dict
+        + embedding: List[float]
+    }
+
+    class AsyncWebCrawler {
+        + start()
+        + arun()
+        + close()
+    }
+
+    class DocumentProcessor {
+        + chunk_text()
+        + get_title_and_summary()
+        + get_embedding()
+        + process_chunk()
+    }
+}
+
+package "UI Layer" {
+    class StreamlitUI {
+        + messages: List[Dict]
+        + run_agent_with_streaming()
+        + main()
+    }
+}
+
+' Relationships
+AgentState --> StateGraph
+Agent <|-- ReasonerAgent
+Agent <|-- RouterAgent
+Agent <|-- CoderAgent
+CoderAgent --> PydanticAIDeps
+ProcessedChunk --> AsyncWebCrawler
+DocumentProcessor --> ProcessedChunk
+StreamlitUI --> StateGraph
+
+@enduml

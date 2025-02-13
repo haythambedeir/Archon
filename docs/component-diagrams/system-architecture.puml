@@ -1,0 +1,71 @@
+@startuml System Architecture
+
+' Style settings
+skinparam monochrome true
+skinparam shadowing false
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+
+' Title
+title Archon System Architecture - Component Diagram
+
+' External Systems
+cloud "OpenAI API" as OpenAI {
+    interface "Embeddings API" as EmbeddingsAPI
+    interface "Chat API" as ChatAPI
+}
+
+database "Supabase" as Supabase {
+    interface "Vector Store" as VectorStore
+    interface "SQL Tables" as SQLTables
+}
+
+' Main Components
+package "Archon System" {
+    component "Streamlit UI" as UI {
+        interface "Web Interface" as WebUI
+        portin "User Input" as UserInput
+        portout "Response Stream" as ResponseStream
+    }
+
+    component "Workflow Engine" as WorkflowEngine {
+        interface "State Management" as StateManagement
+        interface "Graph Execution" as GraphExecution
+    }
+
+    component "Agent System" as AgentSystem {
+        component "Reasoner Agent" as Reasoner
+        component "Coder Agent" as Coder
+        component "Router Agent" as Router
+    }
+
+    component "Documentation System" as DocSystem {
+        interface "Crawler API" as CrawlerAPI
+        interface "Chunk Processing" as ChunkProcessing
+    }
+
+    component "Memory System" as MemorySystem {
+        interface "Checkpointing" as Checkpointing
+    }
+}
+
+' Dependencies
+UserInput --> WebUI
+WebUI --> WorkflowEngine
+WorkflowEngine --> AgentSystem
+WorkflowEngine --> MemorySystem
+AgentSystem --> DocSystem
+DocSystem --> OpenAI
+DocSystem --> Supabase
+AgentSystem --> OpenAI
+ResponseStream <-- WorkflowEngine
+
+' Interfaces
+Reasoner -up-> ChatAPI
+Coder -up-> ChatAPI
+Router -up-> ChatAPI
+DocSystem -up-> EmbeddingsAPI
+DocSystem -right-> VectorStore
+DocSystem -right-> SQLTables
+
+@enduml

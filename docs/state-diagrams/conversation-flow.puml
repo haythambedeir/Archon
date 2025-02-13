@@ -1,0 +1,55 @@
+@startuml Conversation Flow
+
+' Style settings
+skinparam monochrome true
+skinparam shadowing false
+skinparam StateBackgroundColor white
+skinparam StateBorderColor black
+
+' Title
+title Archon Conversation Flow - State Diagram
+
+' States
+[*] --> Initializing : Start Session
+
+state Initializing {
+    [*] --> CreatingSession
+    CreatingSession --> SessionReady : Session Created
+}
+
+state MainFlow {
+    state "Scope Definition" as Scope {
+        [*] --> AnalyzingRequirements
+        AnalyzingRequirements --> GatheringDocs : Query Documentation
+        GatheringDocs --> CreatingScope : Process Documentation
+        CreatingScope --> ScopeComplete : Scope Document Ready
+    }
+
+    state "Code Generation" as Coding {
+        [*] --> RetrievingDocs
+        RetrievingDocs --> GeneratingCode : RAG Complete
+        GeneratingCode --> CodeReview : Code Generated
+        CodeReview --> GeneratingCode : Modifications Needed
+        CodeReview --> CodeComplete : Code Approved
+    }
+
+    state "Conversation Routing" as Routing {
+        [*] --> EvaluatingInput
+        EvaluatingInput --> ContinueCoding : More Changes Needed
+        EvaluatingInput --> FinishingUp : Task Complete
+    }
+}
+
+' Transitions
+SessionReady --> Scope : User Input Received
+ScopeComplete --> Coding : Begin Implementation
+CodeComplete --> Routing : Code Generated
+ContinueCoding --> Coding : Route to Coder
+FinishingUp --> [*] : End Session
+
+' Notes
+note right of Scope : "Uses Reasoner Agent"
+note right of Coding : "Uses Coder Agent"
+note right of Routing : "Uses Router Agent"
+
+@enduml
